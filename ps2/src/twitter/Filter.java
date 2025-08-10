@@ -1,6 +1,7 @@
 package twitter;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Filter consists of methods that filter a list of tweets for those matching a

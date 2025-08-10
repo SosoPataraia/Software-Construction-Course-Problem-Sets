@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,15 +17,33 @@ public class SocialNetworkTest {
 
 	private static final Instant d1 = Instant.parse("2016-02-17T10:00:00Z");
     private static final Instant d2 = Instant.parse("2016-02-17T11:00:00Z");
-    
-    private static final Tweet tweet1 = new Tweet(1, "alyssa", "@bbitdiddle what's up?", d1);
-    private static final Tweet tweet2 = new Tweet(2, "bbitdiddle", "@alyssa hey there", d2);
-    private static final Tweet tweet3 = new Tweet(3, "alyssa", "@charlie thanks", d1);
-    private static final Tweet tweet4 = new Tweet(4, "charlie", "just tweeting", d2);
+
+    private static final Tweet tweet1 = new Tweet(1, "alyssa", "@bbitdiddle #mit #java", d1);
+    private static final Tweet tweet2 = new Tweet(2, "bbitdiddle", "@alyssa #mit #python", d2);
+    private static final Tweet tweet3 = new Tweet(3, "charlie", "#mit #java #python", d1);
+    private static final Tweet tweet4 = new Tweet(4, "dave", "just tweeting", d2);
+    private static final Tweet tweet5 = new Tweet(5, "eve", "@eve #self", d2); // user mentions self
+    private static final Tweet tweet6 = new Tweet(6, "frank", "@nonexistentuser #random #random", d2);
+    private static final Tweet tweet7 = new Tweet(7, "greg", "#java #python #mit", d1);
+    private static final Tweet tweet8 = new Tweet(8, "hank", "#java #python #mit", d2);
     
     /*
-     * TODO: your testing strategies for these methods should go here.
-     * Make sure you have partitions.
+     * Testing strategies:
+     * 
+     * For guessFollowsGraph:
+     * - empty tweet list
+     * - tweets with mentions (@username)
+     * - tweets with no mentions
+     * - mentions are case insensitive
+     * - user mentions themselves (should not follow self)
+     * - users who only appear as mentioned, not authors
+     * - hashtags shared by multiple users to test common hashtag logic (at least 2 shared hashtags)
+     * 
+     * For influencers:
+     * - empty follows graph
+     * - users with 0 followers
+     * - users with multiple followers
+     * - ties in follower counts (ensure alphabetical order)
      */
     
     @Test(expected=AssertionError.class)
@@ -40,16 +59,47 @@ public class SocialNetworkTest {
     }
     
     @Test
-    public void testGuessFollowsGraph() {
-        Map<String, Set<String>> followsGraph = 
-            SocialNetwork.guessFollowsGraph(Arrays.asList(tweet1, tweet2, tweet3, tweet4));
-        
-        assertEquals("expected 3 users", 3, followsGraph.size());
+    public void testGuessFollowsGraphMentionsAndHashtags() {
+        Map<String, Set<String>> followsGraph =
+            SocialNetwork.guessFollowsGraph(Arrays.asList(tweet1, tweet2, tweet3, tweet4, tweet7, tweet8));
+
+        // Users from authors: alyssa, bbitdiddle, charlie, dave, greg, hank
+        // Mentions: alyssa->bbitdiddle, bbitdiddle->alyssa
+        // dave no mentions
+        // hashtags: greg and hank share 3 hashtags, so they follow each other
+        assertEquals("expected 6 users", 6, followsGraph.size());
+
+        // Mentions
         assertTrue("alyssa follows bbitdiddle", followsGraph.get("alyssa").contains("bbitdiddle"));
-        assertTrue("alyssa follows charlie", followsGraph.get("alyssa").contains("charlie"));
         assertTrue("bbitdiddle follows alyssa", followsGraph.get("bbitdiddle").contains("alyssa"));
-        assertFalse("charlie shouldn't follow anyone", 
-            followsGraph.containsKey("charlie") && !followsGraph.get("charlie").isEmpty());
+        assertFalse("dave follows no one", followsGraph.get("dave").iterator().hasNext());
+
+        // Hashtag commonality followers
+        assertTrue("greg follows hank", followsGraph.get("greg").contains("hank"));
+        assertTrue("hank follows greg", followsGraph.get("hank").contains("greg"));
+
+        // charlie has hashtags but no mentions
+        assertTrue("charlie has no follows", followsGraph.get("charlie").isEmpty());
+    }
+    
+    @Test
+    public void testGuessFollowsGraphSelfMention() {
+        Map<String, Set<String>> followsGraph =
+            SocialNetwork.guessFollowsGraph(Arrays.asList(tweet5)); // eve mentions self
+
+        assertEquals("expected 1 user", 1, followsGraph.size());
+        assertFalse("eve should not follow herself", followsGraph.get("eve").contains("eve"));
+        assertTrue("eve has no follows", followsGraph.get("eve").isEmpty());
+    }
+    
+    @Test
+    public void testGuessFollowsGraphMentionNonAuthor() {
+        Map<String, Set<String>> followsGraph =
+            SocialNetwork.guessFollowsGraph(Arrays.asList(tweet6)); // frank mentions nonexistentuser
+
+        // "nonexistentuser" should appear as mentioned user only
+        assertTrue("frank follows nonexistentuser", followsGraph.get("frank").contains("nonexistentuser"));
+        assertFalse("nonexistentuser should not be a key if not author", followsGraph.containsKey("nonexistentuser"));
     }
     
     @Test
@@ -72,6 +122,25 @@ public class SocialNetworkTest {
         assertTrue("alyssa should be first", influencers.get(0).equals("alyssa") || influencers.get(0).equals("bbitdiddle"));
         assertTrue("bbitdiddle should be second", influencers.get(1).equals("alyssa") || influencers.get(1).equals("bbitdiddle"));
         assertEquals("charlie should be last", "charlie", influencers.get(2));
+    }
+    
+    @Test
+    public void testInfluencersContinued() {
+        Map<String, Set<String>> followsGraph = new HashMap<>();
+        // users with 2 followers each
+        followsGraph.put("user1", new HashSet<>(Arrays.asList("user3")));
+        followsGraph.put("user2", new HashSet<>(Arrays.asList("user3")));
+        followsGraph.put("user3", new HashSet<>(Arrays.asList()));
+
+        // user3 has 2 followers, user1 and user2 have 0 followers
+        List<String> influencers = SocialNetwork.influencers(followsGraph);
+
+        assertEquals("expected size", 3, influencers.size());
+        assertEquals("user3 should be first", "user3", influencers.get(0));
+
+        // user1 and user2 have zero followers, sorted alphabetically
+        assertEquals("user1 should be second", "user1", influencers.get(1));
+        assertEquals("user2 should be third", "user2", influencers.get(2));
     }
 
     /*

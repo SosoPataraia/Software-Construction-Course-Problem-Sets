@@ -5,11 +5,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * SocialNetwork provides methods that operate on a social network.
@@ -44,8 +45,12 @@ public class SocialNetwork {
      *         All the Twitter usernames in the returned social network must be
      *         either authors or @-mentions in the list of tweets.
      */
-    public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
-    	Map<String, Set<String>> followsGraph = new HashMap<>();
+	public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
+        Map<String, Set<String>> followsGraph = new HashMap<>();
+        
+        if (tweets.isEmpty()) {
+            return followsGraph;
+        }
         
         // First collect all authors
         Set<String> authors = tweets.stream()
@@ -64,14 +69,51 @@ public class SocialNetwork {
             
             // Add each mentioned user to the author's following set
             for (String mentioned : mentionedUsers) {
-                // Don't allow self-following
                 if (!mentioned.equalsIgnoreCase(author)) {
                     followsGraph.get(author).add(mentioned.toLowerCase());
                 }
             }
         }
         
+        // Additional evidence: common hashtags
+        Map<String, Set<String>> userHashtags = getUserHashtags(tweets);
+        for (String user1 : userHashtags.keySet()) {
+            for (String user2 : userHashtags.keySet()) {
+                if (!user1.equals(user2)) {
+                    // If users share at least 2 hashtags, consider them connected
+                    Set<String> commonHashtags = new HashSet<>(userHashtags.get(user1));
+                    commonHashtags.retainAll(userHashtags.get(user2));
+                    if (commonHashtags.size() >= 2) {
+                        followsGraph.get(user1).add(user2);
+                        followsGraph.get(user2).add(user1);
+                    }
+                }
+            }
+        }
+        
         return followsGraph;
+    }
+	
+	/**
+     * Helper method to extract hashtags used by each user
+     */
+    private static Map<String, Set<String>> getUserHashtags(List<Tweet> tweets) {
+        Map<String, Set<String>> userHashtags = new HashMap<>();
+        Pattern hashtagPattern = Pattern.compile("#([a-zA-Z0-9]+)");
+        
+        for (Tweet tweet : tweets) {
+            String author = tweet.getAuthor().toLowerCase();
+            String text = tweet.getText().toLowerCase();
+            Matcher matcher = hashtagPattern.matcher(text);
+            
+            userHashtags.putIfAbsent(author, new HashSet<>());
+            
+            while (matcher.find()) {
+                userHashtags.get(author).add(matcher.group(1));
+            }
+        }
+        
+        return userHashtags;
     }
 
     /**
