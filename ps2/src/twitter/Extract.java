@@ -21,7 +21,24 @@ public class Extract {
      *         every tweet in the list.
      */
     public static Timespan getTimespan(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
+    	if (tweets.isEmpty()) {
+            throw new IllegalArgumentException("List of tweets cannot be empty");
+        }
+    	
+    	Instant start = tweets.get(0).getTimestamp();
+        Instant end = tweets.get(0).getTimestamp();
+        
+        for (Tweet tweet : tweets) {
+            Instant timestamp = tweet.getTimestamp();
+            if (timestamp.isBefore(start)) {
+                start = timestamp;
+            }
+            if (timestamp.isAfter(end)) {
+                end = timestamp;
+            }
+        }
+
+        return new Timespan(start, end);
     }
 
     /**
@@ -40,8 +57,47 @@ public class Extract {
      *         include a username at most once.
      */
     public static Set<String> getMentionedUsers(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
+    	 Set<String> mentionedUsers = new HashSet<>();
+         Pattern pattern = Pattern.compile("@([a-zA-Z0-9_-]+)");
+         
+         for (Tweet tweet : tweets) {
+             String text = tweet.getText();
+             Matcher matcher = pattern.matcher(text);
+             
+             while (matcher.find()) {
+                 String username = matcher.group(1).toLowerCase();
+                 if (isValidMention(matcher, text)) {
+                     mentionedUsers.add(username);
+                 }
+             }
+         }
+         
+         return mentionedUsers;
     }
+    
+    private static boolean isValidMention(Matcher matcher, String text) {
+        int start = matcher.start();
+        int end = matcher.end();
+        
+        // Check character before @
+        if (start > 0) {
+            char before = text.charAt(start - 1);
+            if (Character.isLetterOrDigit(before) || before == '-' || before == '_') {
+                return false;
+            }
+        }
+        
+        // Check character after username
+        if (end < text.length()) {
+            char after = text.charAt(end);
+            if (Character.isLetterOrDigit(after) || after == '-' || after == '_') {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
 
     /* Copyright (c) 2007-2016 MIT 6.005 course staff, all rights reserved.
      * Redistribution of original or derived work requires explicit permission.
