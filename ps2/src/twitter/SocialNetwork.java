@@ -3,6 +3,13 @@ package twitter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * SocialNetwork provides methods that operate on a social network.
@@ -38,7 +45,33 @@ public class SocialNetwork {
      *         either authors or @-mentions in the list of tweets.
      */
     public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
+    	Map<String, Set<String>> followsGraph = new HashMap<>();
+        
+        // First collect all authors
+        Set<String> authors = tweets.stream()
+            .map(tweet -> tweet.getAuthor().toLowerCase())
+            .collect(Collectors.toSet());
+            
+        // Initialize empty sets for each author
+        for (String author : authors) {
+            followsGraph.put(author, new HashSet<>());
+        }
+        
+        // Process each tweet to find mentions
+        for (Tweet tweet : tweets) {
+            String author = tweet.getAuthor().toLowerCase();
+            Set<String> mentionedUsers = Extract.getMentionedUsers(Arrays.asList(tweet));
+            
+            // Add each mentioned user to the author's following set
+            for (String mentioned : mentionedUsers) {
+                // Don't allow self-following
+                if (!mentioned.equalsIgnoreCase(author)) {
+                    followsGraph.get(author).add(mentioned.toLowerCase());
+                }
+            }
+        }
+        
+        return followsGraph;
     }
 
     /**
@@ -51,7 +84,26 @@ public class SocialNetwork {
      *         descending order of follower count.
      */
     public static List<String> influencers(Map<String, Set<String>> followsGraph) {
-        throw new RuntimeException("not implemented");
+    	Map<String, Integer> influenceCount = new HashMap<>();
+        
+        // Count how many times each user is followed
+        for (Set<String> followers : followsGraph.values()) {
+            for (String user : followers) {
+                influenceCount.put(user, influenceCount.getOrDefault(user, 0) + 1);
+            }
+        }
+        
+        // Include all users who might have 0 followers
+        for (String user : followsGraph.keySet()) {
+            influenceCount.putIfAbsent(user, 0);
+        }
+        
+        // Sort by influence count descending, then alphabetically
+        return influenceCount.entrySet().stream()
+            .sorted(Comparator.<Map.Entry<String, Integer>>comparingInt(entry -> -entry.getValue())
+                .thenComparing(Map.Entry::getKey))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
     }
 
     /* Copyright (c) 2007-2016 MIT 6.005 course staff, all rights reserved.

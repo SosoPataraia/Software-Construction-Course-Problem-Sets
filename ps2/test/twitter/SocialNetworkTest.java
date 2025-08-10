@@ -3,6 +3,8 @@ package twitter;
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
+import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +14,14 @@ import org.junit.Test;
 
 public class SocialNetworkTest {
 
+	private static final Instant d1 = Instant.parse("2016-02-17T10:00:00Z");
+    private static final Instant d2 = Instant.parse("2016-02-17T11:00:00Z");
+    
+    private static final Tweet tweet1 = new Tweet(1, "alyssa", "@bbitdiddle what's up?", d1);
+    private static final Tweet tweet2 = new Tweet(2, "bbitdiddle", "@alyssa hey there", d2);
+    private static final Tweet tweet3 = new Tweet(3, "alyssa", "@charlie thanks", d1);
+    private static final Tweet tweet4 = new Tweet(4, "charlie", "just tweeting", d2);
+    
     /*
      * TODO: your testing strategies for these methods should go here.
      * Make sure you have partitions.
@@ -30,11 +40,38 @@ public class SocialNetworkTest {
     }
     
     @Test
+    public void testGuessFollowsGraph() {
+        Map<String, Set<String>> followsGraph = 
+            SocialNetwork.guessFollowsGraph(Arrays.asList(tweet1, tweet2, tweet3, tweet4));
+        
+        assertEquals("expected 3 users", 3, followsGraph.size());
+        assertTrue("alyssa follows bbitdiddle", followsGraph.get("alyssa").contains("bbitdiddle"));
+        assertTrue("alyssa follows charlie", followsGraph.get("alyssa").contains("charlie"));
+        assertTrue("bbitdiddle follows alyssa", followsGraph.get("bbitdiddle").contains("alyssa"));
+        assertFalse("charlie shouldn't follow anyone", 
+            followsGraph.containsKey("charlie") && !followsGraph.get("charlie").isEmpty());
+    }
+    
+    @Test
     public void testInfluencersEmpty() {
         Map<String, Set<String>> followsGraph = new HashMap<>();
         List<String> influencers = SocialNetwork.influencers(followsGraph);
         
         assertTrue("expected empty list", influencers.isEmpty());
+    }
+    
+    @Test
+    public void testInfluencers() {
+        Map<String, Set<String>> followsGraph = new HashMap<>();
+        followsGraph.put("alyssa", new HashSet<>(Arrays.asList("bbitdiddle", "charlie")));
+        followsGraph.put("bbitdiddle", new HashSet<>(Arrays.asList("alyssa")));
+        followsGraph.put("charlie", new HashSet<>());
+        
+        List<String> influencers = SocialNetwork.influencers(followsGraph);
+        assertEquals("expected size", 3, influencers.size());
+        assertTrue("alyssa should be first", influencers.get(0).equals("alyssa") || influencers.get(0).equals("bbitdiddle"));
+        assertTrue("bbitdiddle should be second", influencers.get(1).equals("alyssa") || influencers.get(1).equals("bbitdiddle"));
+        assertEquals("charlie should be last", "charlie", influencers.get(2));
     }
 
     /*
