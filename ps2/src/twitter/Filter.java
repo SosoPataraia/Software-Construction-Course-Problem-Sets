@@ -24,7 +24,9 @@ public class Filter {
      *         in the same order as in the input list.
      */
     public static List<Tweet> writtenBy(List<Tweet> tweets, String username) {
-        throw new RuntimeException("not implemented");
+    	return tweets.stream()
+                .filter(tweet -> tweet.getAuthor().equalsIgnoreCase(username))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -38,7 +40,10 @@ public class Filter {
      *         in the same order as in the input list.
      */
     public static List<Tweet> inTimespan(List<Tweet> tweets, Timespan timespan) {
-        throw new RuntimeException("not implemented");
+    	return tweets.stream()
+                .filter(tweet -> !tweet.getTimestamp().isBefore(timespan.getStart()) &&
+                                 !tweet.getTimestamp().isAfter(timespan.getEnd()))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -57,7 +62,16 @@ public class Filter {
      *         same order as in the input list.
      */
     public static List<Tweet> containing(List<Tweet> tweets, List<String> words) {
-        throw new RuntimeException("not implemented");
+    	List<String> lowerWords = words.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+                
+            return tweets.stream()
+                .filter(tweet -> {
+                    String text = tweet.getText().toLowerCase();
+                    return lowerWords.stream().anyMatch(text::contains);
+                })
+                .collect(Collectors.toList());
     }
 
     /* Copyright (c) 2007-2016 MIT 6.005 course staff, all rights reserved.

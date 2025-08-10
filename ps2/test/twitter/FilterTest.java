@@ -15,12 +15,14 @@ public class FilterTest {
      * Make sure you have partitions.
      */
     
-    private static final Instant d1 = Instant.parse("2016-02-17T10:00:00Z");
+	private static final Instant d1 = Instant.parse("2016-02-17T10:00:00Z");
     private static final Instant d2 = Instant.parse("2016-02-17T11:00:00Z");
+    private static final Instant d3 = Instant.parse("2016-02-17T09:00:00Z");
     
     private static final Tweet tweet1 = new Tweet(1, "alyssa", "is it reasonable to talk about rivest so much?", d1);
     private static final Tweet tweet2 = new Tweet(2, "bbitdiddle", "rivest talk in 30 minutes #hype", d2);
-    
+    private static final Tweet tweet3 = new Tweet(3, "alyssa", "let's talk about MIT", d3);
+
     @Test(expected=AssertionError.class)
     public void testAssertionsEnabled() {
         assert false; // make sure assertions are enabled with VM argument: -ea
@@ -32,6 +34,13 @@ public class FilterTest {
         
         assertEquals("expected singleton list", 1, writtenBy.size());
         assertTrue("expected list to contain tweet", writtenBy.contains(tweet1));
+    }
+    
+    @Test
+    public void testWrittenByCaseInsensitive() {
+        List<Tweet> writtenBy = Filter.writtenBy(Arrays.asList(tweet1, tweet2), "ALYSSA");
+        assertEquals("expected size", 1, writtenBy.size());
+        assertTrue("expected tweet1", writtenBy.contains(tweet1));
     }
     
     @Test
@@ -47,12 +56,28 @@ public class FilterTest {
     }
     
     @Test
-    public void testContaining() {
-        List<Tweet> containing = Filter.containing(Arrays.asList(tweet1, tweet2), Arrays.asList("talk"));
+    public void testContainingSubstring() {
+        List<Tweet> containing = Filter.containing(Arrays.asList(tweet1, tweet2, tweet3), 
+            Arrays.asList("talk"));
         
-        assertFalse("expected non-empty list", containing.isEmpty());
-        assertTrue("expected list to contain tweets", containing.containsAll(Arrays.asList(tweet1, tweet2)));
-        assertEquals("expected same order", 0, containing.indexOf(tweet1));
+        assertEquals("expected size", 3, containing.size());
+        assertTrue("expected all tweets", containing.containsAll(Arrays.asList(tweet1, tweet2, tweet3)));
+    }
+    
+    @Test
+    public void testContainingCaseInsensitive() {
+        List<Tweet> containing = Filter.containing(Arrays.asList(tweet1, tweet2, tweet3), 
+            Arrays.asList("TALK"));
+        
+        assertEquals("expected size", 3, containing.size());
+    }
+    
+    @Test
+    public void testContainingNoResults() {
+        List<Tweet> containing = Filter.containing(Arrays.asList(tweet1, tweet2, tweet3), 
+            Arrays.asList("nonexistent"));
+        
+        assertTrue("expected empty", containing.isEmpty());
     }
 
     /*
