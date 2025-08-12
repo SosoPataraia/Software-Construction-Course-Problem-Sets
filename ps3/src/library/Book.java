@@ -1,6 +1,8 @@
 package library;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Book is an immutable type representing an edition of a book -- not the physical object, 
@@ -10,11 +12,25 @@ import java.util.List;
  */
 public class Book {
 
-    // TODO: rep
+	private final String title;
+    private final List<String> authors;
+    private final int year;
+
+	// TODO: rep
     
     // TODO: rep invariant
     // TODO: abstraction function
     // TODO: safety from rep exposure argument
+	
+	// Rep invariant:
+    //   title != null, contains at least one non-space character
+    //   authors != null, has at least one author, each author has at least one non-space character
+    //   year >= 0
+    // Abstraction function:
+    //   Represents a published book with given title, author list, and publication year
+    // Safety from rep exposure:
+    //   All fields are private and final
+    //   Mutable authors list is defensively copied in constructor and getter
     
     /**
      * Make a Book.
@@ -24,33 +40,41 @@ public class Book {
      * @param year Year when this edition was published in the conventional (Common Era) calendar.  Must be nonnegative. 
      */
     public Book(String title, List<String> authors, int year) {
-        throw new RuntimeException("not implemented yet");
+    	this.title = title.trim();
+        this.authors = List.copyOf(authors);
+        this.year = year;
+        checkRep();    
     }
     
     // assert the rep invariant
     private void checkRep() {
-        throw new RuntimeException("not implemented yet");
+    	assert title != null && !title.isBlank() : "Title must contain non-space character";
+        assert authors != null && !authors.isEmpty() : "Must have at least one author";
+        for (String author : authors) {
+            assert author != null && !author.isBlank() : "Author names must be non-blank";
+        }
+        assert year >= 0 : "Publication year must be non-negative";
     }
     
     /**
      * @return the title of this book
      */
     public String getTitle() {
-        throw new RuntimeException("not implemented yet");
+    	return title;
     }
     
     /**
      * @return the authors of this book
      */
     public List<String> getAuthors() {
-        throw new RuntimeException("not implemented yet");
+    	return Collections.unmodifiableList(authors);
     }
 
     /**
      * @return the year that this book was published
      */
     public int getYear() {
-        throw new RuntimeException("not implemented yet");
+    	return year;
     }
 
     /**
@@ -58,20 +82,25 @@ public class Book {
      *    authors, and publication year
      */
     public String toString() {
-        throw new RuntimeException("not implemented yet");
+    	return String.format("\"%s\" by %s (%d)", title, String.join(", ", authors), year);
     }
 
     // uncomment the following methods if you need to implement equals and hashCode,
     // or delete them if you don't
-    // @Override
-    // public boolean equals(Object that) {
-    //     throw new RuntimeException("not implemented yet");
-    // }
-    // 
-    // @Override
-    // public int hashCode() {
-    //     throw new RuntimeException("not implemented yet");
-    // }
+    @Override
+    public boolean equals(Object that) {
+    	if (this == that) return true;
+        if (!(that instanceof Book)) return false;
+        Book other = (Book) that;
+        return year == other.year &&
+               title.equals(other.title) &&
+               authors.equals(other.authors);
+    }
+    
+    @Override
+    public int hashCode() {
+    	return Objects.hash(title, authors, year);
+    }
 
 
 
