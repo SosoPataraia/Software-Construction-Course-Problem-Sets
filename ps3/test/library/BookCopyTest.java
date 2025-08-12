@@ -16,7 +16,15 @@ public class BookCopyTest {
      * 
      * TODO: your testing strategy for this ADT should go here.
      * Make sure you have partitions.
+     * 
+     * Testing strategy:
+     * - Test initial state is GOOD condition
+     * - Test condition changes via setCondition
+     * - Test getBook returns correct book
      */
+	
+	private final Book book = new Book("Test Book", Arrays.asList("Author"), 2020);
+    private final BookCopy copy = new BookCopy(book);
     
     // TODO: put JUnit @Test methods here that you developed from your testing strategy
     @Test
@@ -29,6 +37,22 @@ public class BookCopyTest {
     @Test(expected=AssertionError.class)
     public void testAssertionsEnabled() {
         assert false; // make sure assertions are enabled with VM argument: -ea
+    }
+    
+    @Test
+    public void testInitialStateIsGood() {
+        assertEquals(BookCopy.Condition.GOOD, copy.getCondition());
+    }
+
+    @Test
+    public void testSetConditionChangesState() {
+        copy.setCondition(BookCopy.Condition.DAMAGED);
+        assertEquals(BookCopy.Condition.DAMAGED, copy.getCondition());
+    }
+
+    @Test
+    public void testGetBookReturnsCorrectBook() {
+        assertEquals(book, copy.getBook());
     }
 
 
