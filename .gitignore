@@ -1,0 +1,41 @@
+# IntelliJ / JetBrains project files
+.idea/
+
+# VS Code project files
+.vscode/
+
+# Qodo or custom config folders
+.qodo/
+
+# Compiled binaries and class files
+**/bin/
+**/out/
+*.class
+
+# Package outputs
+target/
+build/
+
+# Library jars (if manually placed)
+**/lib/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Python cache (just in case)
+__pycache__/
+*.py[cod]
+
+# Mac OS hidden folders
+__MACOSX/
+
+# Logs
+*.log
+
+# Test results / temp files
+*.tmp
+*.swp
+
+# Ignore all `*.iml` project/module files
+*.iml
