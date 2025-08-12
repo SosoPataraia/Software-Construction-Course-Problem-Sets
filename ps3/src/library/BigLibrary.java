@@ -26,6 +26,8 @@ public class BigLibrary implements Library {
 	private final Map<Book, BookRecord> bookRecords = new HashMap<>();
     private final Map<String, Set<Book>> exactMatchIndex = new HashMap<>();
     
+    private final Map<String, Set<Book>> wordIndex = new HashMap<>();
+
     
     private static class BookRecord {
         final Set<BookCopy> allCopies = new HashSet<>();
@@ -92,10 +94,123 @@ public class BigLibrary implements Library {
         return copy;
     }
     
+    @Override
+    public List<Book> find(String query) {
+        List<String> tokens = tokenizeQuery(query);
+        Map<Book, Integer> scores = new HashMap<>();
+        
+        for (String token : tokens) {
+            if (token.contains(" ")) {
+                // Phrase match
+                Set<Book> candidateBooks = getBooksForPhrase(token);
+                for (Book book : candidateBooks) {
+                    scores.put(book, scores.getOrDefault(book, 0) + 3);
+                }
+            } else {
+                // Word match
+                Set<Book> books = wordIndex.getOrDefault(token, Set.of());
+                for (Book book : books) {
+                    scores.put(book, scores.getOrDefault(book, 0) + 1);
+                }
+            }
+        }
+        
+        List<Book> result = new ArrayList<>(scores.keySet());
+        result.sort((b1, b2) -> {
+            int scoreCompare = scores.get(b2).compareTo(scores.get(b1));
+            return scoreCompare != 0 ? scoreCompare : 
+                   Integer.compare(b2.getYear(), b1.getYear());
+        });
+        return result;
+    }
+
+    private List<String> tokenizeQuery(String query) {
+        List<String> tokens = new ArrayList<>();
+        boolean inQuotes = false;
+        StringBuilder token = new StringBuilder();
+        
+        for (char c : query.toCharArray()) {
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (Character.isWhitespace(c) && !inQuotes) {
+                if (token.length() > 0) {
+                    tokens.add(token.toString().toLowerCase());
+                    token.setLength(0);
+                }
+            } else {
+                token.append(c);
+            }
+        }
+        if (token.length() > 0) {
+            tokens.add(token.toString().toLowerCase());
+        }
+        return tokens;
+    }
+
+    private Set<Book> getBooksForPhrase(String phrase) {
+        String[] words = phrase.split("\\s+");
+        if (words.length == 0) return Set.of();
+        
+        Set<Book> candidateBooks = new HashSet<>(
+            wordIndex.getOrDefault(words[0].toLowerCase(), Set.of()));
+        
+        for (int i = 1; i < words.length; i++) {
+            Set<Book> nextBooks = wordIndex.getOrDefault(words[i].toLowerCase(), Set.of());
+            candidateBooks.retainAll(nextBooks);
+        }
+        
+        Set<Book> results = new HashSet<>();
+        for (Book book : candidateBooks) {
+            String lcTitle = book.getTitle().toLowerCase();
+            if (lcTitle.contains(phrase)) {
+                results.add(book);
+                continue;
+            }
+            for (String author : book.getAuthors()) {
+                if (author.toLowerCase().contains(phrase)) {
+                    results.add(book);
+                    break;
+                }
+            }
+        }
+        return results;
+    }
+
+    // Update indexBook method to include word indexing
     private void indexBook(Book book) {
+        // Existing exact match indexing
         indexString(book.getTitle(), book);
         for (String author : book.getAuthors()) {
             indexString(author, book);
+        }
+        
+        // New word indexing
+        indexWords(book.getTitle(), book);
+        for (String author : book.getAuthors()) {
+            indexWords(author, book);
+        }
+    }
+
+    private void indexWords(String text, Book book) {
+        for (String word : text.split("\\W+")) {
+            if (!word.isEmpty()) {
+                String lcWord = word.toLowerCase();
+                wordIndex.computeIfAbsent(lcWord, k -> new HashSet<>()).add(book);
+            }
+        }
+    }
+
+    // Update unindexBook to remove words
+    private void unindexBook(Book book) {
+        // Existing exact match removal
+        unindexString(book.getTitle(), book);
+        for (String author : book.getAuthors()) {
+            unindexString(author, book);
+        }
+        
+        // New word index removal
+        for (Set<Book> bookSet : wordIndex.values()) {
+            bookSet.remove(book);
         }
     }
     
@@ -140,13 +255,7 @@ public class BigLibrary implements Library {
         return record == null ? Set.of() : Collections.unmodifiableSet(record.availableCopies);
     }
 
-    @Override
-    public List<Book> find(String query) {
-        Set<Book> books = exactMatchIndex.getOrDefault(query, Set.of());
-        List<Book> result = new ArrayList<>(books);
-        result.sort(Comparator.comparingInt(Book::getYear).reversed());
-        return result;
-    }
+    
     
     @Override
     public void lose(BookCopy copy) {
@@ -163,12 +272,7 @@ public class BigLibrary implements Library {
         }
     }
     
-    private void unindexBook(Book book) {
-        unindexString(book.getTitle(), book);
-        for (String author : book.getAuthors()) {
-            unindexString(author, book);
-        }
-    }
+    
     
     private void unindexString(String text, Book book) {
         Set<Book> books = exactMatchIndex.get(text);
